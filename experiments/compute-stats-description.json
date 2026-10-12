@@ -1,0 +1,4 @@
+{
+  "tool": "compute_stats",
+  "description": "Compute aggregate VPIP, PFR, 3-bet, fold-to-3-bet, c-bet, WTSD, W$SD, and aggression factor. For a user's personal statistics, supply their known player_hash; if their identity is missing, ask for it before calling. Omit player_hash only for an explicit population-wide request. Optional position and timestamp bounds restrict the aggregate. For a report broken out across all positions use compare_positions; for threshold-based deviations from the population use find_leaks."
+}

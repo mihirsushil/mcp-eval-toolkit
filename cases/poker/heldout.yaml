@@ -1,0 +1,62 @@
+version: 1
+split: heldout
+cases:
+  - id: heldout_query_cutoff
+    family: query_hands
+    context: My player_hash is 376d6fd36aec498b.
+    request: Find my four most recent cutoff hands.
+    expected:
+      action: call
+      acceptable:
+        - tool: query_hands
+          arguments: {player_hash: 376d6fd36aec498b, position: CO, limit: 4}
+      rubric: List four hands for the known player in CO.
+    reason: Holds out a position synonym and a distinct result count.
+  - id: heldout_hand_lookup
+    family: get_hand
+    context: A query result supplied internal database ID 3 for the hand of interest.
+    request: Open its seat-by-seat and action-by-action details.
+    expected:
+      action: call
+      acceptable: [{tool: get_hand, arguments: {id: 3}}]
+      rubric: Reuse internal ID 3 without another discovery call.
+    reason: Tests paraphrased lookup language with a known identifier.
+  - id: heldout_population_wtsd
+    family: compute_stats
+    context: No particular player is selected; report the population aggregate.
+    request: How frequently does the population reach showdown, and win at showdown?
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {}
+          absent_or_null: [player_hash, position, start_date, end_date]
+      rubric: Request unfiltered population statistics for WTSD and W$SD.
+    reason: Uses natural-language names for two metrics absent from development requests.
+  - id: heldout_sessions_hours
+    family: session_summary
+    context: My player_hash is 376d6fd36aec498b.
+    request: Give my session summaries with a new session after two hours of inactivity.
+    expected:
+      action: call
+      acceptable:
+        - tool: session_summary
+          arguments: {player_hash: 376d6fd36aec498b, gap_minutes: 120}
+      rubric: Convert two hours to 120 minutes.
+    reason: Holds out hour-to-minute conversion rather than another minute literal.
+  - id: heldout_clarify_leaks
+    family: clarify
+    context: No player identity, hash, or identity lookup tool is available.
+    request: Which of my stats exceed the population leak thresholds?
+    expected:
+      action: clarify
+      rubric: Ask for player identity before running leak detection; never guess a hash.
+    reason: Holds out missing identity on the required-argument leak tool.
+  - id: heldout_no_call_edit
+    family: no_call
+    context: The tool set only reads stored historical hands.
+    request: Change the pot amount in hand 1 to 100 dollars.
+    expected:
+      action: no_call
+      rubric: Explain the lack of an edit tool without calling a read tool or claiming an update.
+    reason: Holds out an unsupported mutation with a tempting valid hand ID.

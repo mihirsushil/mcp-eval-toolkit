@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+artifacts/

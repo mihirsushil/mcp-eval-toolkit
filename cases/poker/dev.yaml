@@ -1,0 +1,249 @@
+version: 1
+split: dev
+cases:
+  - id: query_recent
+    family: query_hands
+    context: No player identity is known. Population queries are allowed.
+    request: Show the five newest hands across the whole database.
+    expected:
+      action: call
+      acceptable:
+        - tool: query_hands
+          arguments: {limit: 5}
+          absent_or_null: [player_hash, position, site, start_date, end_date]
+      rubric: Return one filtered-list call; no invented player identity.
+    reason: Distinguishes listing hands from aggregate statistics.
+  - id: query_player_button
+    family: query_hands
+    context: My player_hash is 376d6fd36aec498b.
+    request: List my ten newest hands from the button.
+    expected:
+      action: call
+      acceptable:
+        - tool: query_hands
+          arguments: {player_hash: 376d6fd36aec498b, position: BTN, limit: 10}
+      rubric: Use the supplied identity and translate button to BTN.
+    reason: Position without player identity would match someone else's seat.
+  - id: query_page
+    family: query_hands
+    context: No player identity is known. Population queries are allowed.
+    request: List ten PokerStars hands, skipping the first twenty results.
+    expected:
+      action: call
+      acceptable:
+        - tool: query_hands
+          arguments: {site: PokerStars, limit: 10, offset: 20}
+          absent_or_null: [player_hash]
+      rubric: Translate pagination exactly and preserve the site spelling.
+    reason: Tests argument extraction rather than only the tool name.
+  - id: hand_internal_id
+    family: get_hand
+    context: A previous query_hands result has internal id 1.
+    request: Show every seat, action, and pot for that hand.
+    expected:
+      action: call
+      acceptable: [{tool: get_hand, arguments: {id: 1}}]
+      rubric: Use the internal ID already provided.
+    reason: A known internal ID avoids an unnecessary discovery call.
+  - id: hand_explicit_lookup
+    family: get_hand
+    context: Internal database IDs identify hands; site hand numbers are different.
+    request: Fetch all details for internal database hand ID 2.
+    expected:
+      action: call
+      acceptable: [{tool: get_hand, arguments: {id: 2}}]
+      rubric: Pass an integer ID to get_hand.
+    reason: Ensures the model does not confuse lookup and listing.
+  - id: hand_missing_record
+    family: get_hand
+    context: The supplied ID is an internal database ID; its existence is unknown.
+    request: Check whether internal hand 999999999 exists and show it if it does.
+    expected:
+      action: call
+      acceptable: [{tool: get_hand, arguments: {id: 999999999}}]
+      rubric: Query the supplied ID; a null result is valid and must not be fabricated.
+    reason: Missing records are valid tool results, not infrastructure failures.
+  - id: stats_population
+    family: compute_stats
+    context: No player identity is known. Population queries are allowed.
+    request: What are VPIP and PFR across the entire population?
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {}
+          absent_or_null: [player_hash, position, start_date, end_date]
+      rubric: Request unfiltered population stats; a fabricated player hash fails.
+    reason: Empty expected arguments alone must not accidentally permit any filter.
+  - id: stats_player_position
+    family: compute_stats
+    context: My player_hash is 376d6fd36aec498b.
+    request: What are my VPIP, PFR, and aggression factor from the small blind?
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {player_hash: 376d6fd36aec498b, position: SB}
+      rubric: Restrict to the supplied player and SB position.
+    reason: Tests personal statistics without relying on implicit session identity.
+  - id: stats_exact_time_bounds
+    family: compute_stats
+    context: Use the literal database timestamp bounds in the request.
+    request: Compute population stats with start_date 2008-01-01T00:00:00 and end_date 2008-12-31T23:59:59.
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {start_date: '2008-01-01T00:00:00', end_date: '2008-12-31T23:59:59'}
+          absent_or_null: [player_hash, position]
+      rubric: Preserve both explicit timestamps exactly.
+    reason: Avoids ambiguous relative dates and the server's date-only end-boundary issue.
+  - id: positions_population
+    family: compare_positions
+    context: No player identity is known. Population queries are allowed.
+    request: Give me the full population stat report broken out for every position.
+    expected:
+      action: call
+      acceptable:
+        - tool: compare_positions
+          arguments: {}
+          absent_or_null: [player_hash, start_date, end_date]
+      rubric: Use the dedicated per-position report in one call.
+    reason: Distinguishes a position breakdown from one aggregate report.
+  - id: positions_player
+    family: compare_positions
+    context: My player_hash is 376d6fd36aec498b.
+    request: Give me my full stat report at every seat position in a single tool call.
+    expected:
+      action: call
+      acceptable:
+        - tool: compare_positions
+          arguments: {player_hash: 376d6fd36aec498b}
+      rubric: Keep the player filter; use the dedicated breakdown tool.
+    reason: Explicit single-call constraint excludes repeated per-position calls.
+  - id: positions_since_timestamp
+    family: compare_positions
+    context: No player identity is known. Population queries are allowed.
+    request: Break population stats out by position from 2008-01-01T00:00:00 onward.
+    expected:
+      action: call
+      acceptable:
+        - tool: compare_positions
+          arguments: {start_date: '2008-01-01T00:00:00'}
+          absent_or_null: [player_hash, end_date]
+      rubric: Apply the lower bound without inventing an upper bound.
+    reason: Checks time slicing on a neighboring tool with a similar schema.
+  - id: leaks_player
+    family: find_leaks
+    context: My player_hash is 376d6fd36aec498b.
+    request: Flag my stats that differ from the population beyond the configured leak thresholds, respecting minimum sample sizes.
+    expected:
+      action: call
+      acceptable:
+        - tool: find_leaks
+          arguments: {player_hash: 376d6fd36aec498b}
+      rubric: Use the tool that applies thresholds and sample-size gates.
+    reason: A raw stats report does not itself perform threshold-based leak detection.
+  - id: leaks_big_blind
+    family: find_leaks
+    context: My player_hash is 376d6fd36aec498b.
+    request: Flag statistically supported leaks in my big-blind play using the configured thresholds.
+    expected:
+      action: call
+      acceptable:
+        - tool: find_leaks
+          arguments: {player_hash: 376d6fd36aec498b, position: BB}
+      rubric: Restrict leak detection to the specified player and position.
+    reason: Exercises position normalization on a required-identity tool.
+  - id: leaks_since_timestamp
+    family: find_leaks
+    context: My player_hash is 376d6fd36aec498b.
+    request: Run threshold-based leak detection for my hands from 2008-01-01T00:00:00 onward.
+    expected:
+      action: call
+      acceptable:
+        - tool: find_leaks
+          arguments: {player_hash: 376d6fd36aec498b, start_date: '2008-01-01T00:00:00'}
+      rubric: Pass the supplied player hash and lower timestamp bound.
+    reason: Checks date arguments on leak detection independently of aggregate stats.
+  - id: sessions_default
+    family: session_summary
+    context: My player_hash is 376d6fd36aec498b.
+    request: Summarize my sessions with duration, hand count, net result, and tables played; use the default gap.
+    expected:
+      action: call
+      acceptable:
+        - tool: session_summary
+          arguments: {player_hash: 376d6fd36aec498b}
+      rubric: Omitted gap_minutes and explicit 30 are equivalent.
+    reason: Separates session aggregation from hand listing.
+  - id: sessions_one_hour
+    family: session_summary
+    context: My player_hash is 376d6fd36aec498b.
+    request: Summarize my sessions, starting a new session after sixty minutes without hands.
+    expected:
+      action: call
+      acceptable:
+        - tool: session_summary
+          arguments: {player_hash: 376d6fd36aec498b, gap_minutes: 60}
+      rubric: Convert sixty minutes to integer 60.
+    reason: Tests a non-default argument with a direct semantic effect.
+  - id: sessions_fifteen_minutes
+    family: session_summary
+    context: My player_hash is 376d6fd36aec498b.
+    request: Group my play across all tables into sessions using a 15-minute inactivity gap.
+    expected:
+      action: call
+      acceptable:
+        - tool: session_summary
+          arguments: {player_hash: 376d6fd36aec498b, gap_minutes: 15}
+      rubric: Use one session_summary call and keep multi-table play together.
+    reason: Checks that tables do not become invented filtering arguments.
+  - id: clarify_player_stats
+    family: clarify
+    context: No player_hash, logged-in identity, or previous conversation is available.
+    request: What is my VPIP?
+    expected:
+      action: clarify
+      rubric: Ask for the player's hash or identity mapping; do not substitute population statistics or guess a hash.
+    reason: Personal stats require identity even though the API argument is optional.
+  - id: clarify_player_sessions
+    family: clarify
+    context: No player_hash, logged-in identity, or previous conversation is available.
+    request: Summarize my sessions.
+    expected:
+      action: clarify
+      rubric: Ask for the missing player_hash before calling a tool.
+    reason: The server requires an explicit player identity for sessions.
+  - id: clarify_hand_reference
+    family: clarify
+    context: No hand was previously listed and no hand ID is available.
+    request: Show every action in that hand.
+    expected:
+      action: clarify
+      rubric: Ask which hand the user means; do not invent an ID or fetch an arbitrary hand.
+    reason: A deictic reference without context is not a valid lookup target.
+  - id: no_call_vpip_definition
+    family: no_call
+    context: This is a terminology question, not a request about stored hands.
+    request: What does VPIP stand for?
+    expected:
+      action: no_call
+      rubric: Explain voluntarily put money in pot without querying the database.
+    reason: Tool-related vocabulary alone is not a reason to call a tool.
+  - id: no_call_thanks
+    family: no_call
+    context: The user is ending the conversation.
+    request: Thanks, that answers my question.
+    expected:
+      action: no_call
+      rubric: A brief acknowledgement is sufficient; call no tools.
+    reason: Measures unnecessary action on a conversational closing.
+  - id: no_call_delete
+    family: no_call
+    context: Available tools only read historical poker records.
+    request: Delete every hand in the database.
+    expected:
+      action: no_call
+      rubric: Explain that the available tools cannot delete records; do not pretend to have done so.
+    reason: An unsupported operation must not be routed to an unrelated read tool.

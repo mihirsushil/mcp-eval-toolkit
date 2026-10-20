@@ -52,10 +52,10 @@ Do not reinterpret an upstream TP as a passed case: the upstream matcher
 classifies by tool name and separately reports a partial parameter score.
 
 Case order alternates A/B then B/A to reduce simple ordering bias. No claim is
-made that identical random seeds are paired. The pinned upstream does not apply
-the stored temperature, timeout or retry settings to the Agent; the manifest
-records requested settings and this caveat. Resolve this upstream or explicitly
-report the provider defaults before claiming controlled sampling settings.
+made that identical random seeds are paired. Upstream now applies the stored
+temperature, timeout, max_retries, request_limit, and tool_calls_limit to the
+Agent (fixed 2026-10-19); the manifest still records requested settings for
+the audit trail.
 
 ## Next measurement
 

@@ -14,7 +14,28 @@ from .tef import SYSTEM_PROMPT, adapter_limits, create_case, execute
 
 
 async def baseline(args, root: Path, output: Path):
+    resuming = getattr(args, "resume", None) is not None
+    if resuming:
+        previous_manifest = json.loads((output / "manifest.json").read_text())
+        prior_settings = previous_manifest.get("requested_model_settings", {})
+        if (
+            prior_settings.get("provider") != args.provider
+            or prior_settings.get("model") != args.model
+        ):
+            raise ValueError(
+                "--resume directory was run with "
+                f"provider={prior_settings.get('provider')} model={prior_settings.get('model')}; "
+                f"refusing to mix in provider={args.provider} model={args.model}"
+            )
+        if previous_manifest.get("split") != args.split:
+            raise ValueError(
+                f"--resume directory was run with split={previous_manifest.get('split')}; "
+                f"refusing to mix in split={args.split}"
+            )
     suite = select_suite(root, args.split, args.final_report)
+    excluded = set(getattr(args, "exclude_case", None) or [])
+    if excluded:
+        suite = suite.model_copy(update={"cases": [c for c in suite.cases if c.id not in excluded]})
     scripted = args.command == "demo"
     if scripted:
         demo_ids = {
@@ -42,10 +63,14 @@ async def baseline(args, root: Path, output: Path):
         "timeout": 60,
         "max_retries": 0,
         "system_prompt": SYSTEM_PROMPT,
+        "request_limit": args.request_limit,
+        "tool_calls_limit": args.tool_calls_limit,
     }
     if args.base_url:
         settings["base_url"] = args.base_url
-    async with environment(root, args.poker_repo, args.tef_repo, output, scripted=scripted) as (
+    async with environment(
+        root, args.poker_repo, args.tef_repo, output, scripted=scripted, resume=resuming
+    ) as (
         client,
         urls,
         snapshots,
@@ -58,7 +83,7 @@ async def baseline(args, root: Path, output: Path):
                 "split": args.split,
                 "repeats": args.repeats,
                 "requested_model_settings": settings,
-                "effective_settings_caveat": "Pinned upstream persists temperature, timeout and max_retries but does not forward them to Agent; provider defaults apply. No matched random seeds.",
+                "effective_settings_caveat": "Upstream now forwards temperature/timeout/max_retries to the model client and request_limit/tool_calls_limit to the agent run (fixed 2026-10-19); no matched random seeds still applies.",
                 "run_order": "alternate AB/BA per case and repeat; no provider seed pairing",
                 "status": "running",
                 "evaluation_suite_sha256": canonical_hash(suite.model_dump()),
@@ -71,6 +96,10 @@ async def baseline(args, root: Path, output: Path):
             created = {}
             for variant, url in urls.items():
                 for case in suite.cases:
+                    # Always re-register, even on resume: the poker MCP server binds a fresh
+                    # ephemeral port every process start, so a cached test case's stored
+                    # mcp_server_url from a prior run would point at a dead port. Registration
+                    # itself makes no model call, so re-doing it costs nothing.
                     result = await create_case(client, case, url)
                     created[variant, case.id] = result["id"]
                     write_json(output / "upstream-cases" / f"{variant}-{case.id}.json", result)
@@ -78,6 +107,25 @@ async def baseline(args, root: Path, output: Path):
                 for index, case in enumerate(suite.cases):
                     order = ("A", "B") if (index + repeat) % 2 == 0 else ("B", "A")
                     for variant in order:
+                        run_file = output / "runs" / f"{case.id}-{repeat}-{variant}.json"
+                        if resuming and run_file.exists():
+                            cached = json.loads(run_file.read_text())
+                            if cached["result"]["status"] == "completed":
+                                completed.append(cached)
+                                manifest["upstream_runs_returned"] = len(completed)
+                                manifest[
+                                    "scripted_model_runs" if scripted else "live_model_runs"
+                                ] = sum(
+                                    item["result"]["status"] == "completed"
+                                    for item in completed
+                                )
+                                write_json(output / "manifest.json", manifest)
+                                print(
+                                    f"{case.id} {variant} repeat={repeat}: "
+                                    f"{cached['result']['status']} (resumed, skipped)",
+                                    flush=True,
+                                )
+                                continue
                         record = {
                             "case_id": case.id,
                             "variant": variant,
@@ -160,6 +208,8 @@ def main():
         final_report=False,
         temperature=0,
         base_url=None,
+        request_limit=8,
+        tool_calls_limit=5,
     )
     offline = sub.add_parser(
         "report", help="score saved structured traces and generate a paired report"
@@ -186,11 +236,37 @@ def main():
         "--temperature",
         type=float,
         default=0,
-        help="requested value; pinned upstream does not apply it",
+        help="sampling temperature forwarded to the model client",
+    )
+    run.add_argument(
+        "--request-limit",
+        type=int,
+        default=8,
+        help="max model requests per case evaluation; bounds a runaway agent loop",
+    )
+    run.add_argument(
+        "--tool-calls-limit",
+        type=int,
+        default=5,
+        help="max tool calls per case evaluation; dev/heldout cases expect at most one",
     )
     run.add_argument("--repeats", type=int, default=1)
     run.add_argument("--split", choices=["dev", "heldout"], default="dev")
     run.add_argument("--final-report", action="store_true")
+    run.add_argument(
+        "--exclude-case",
+        action="append",
+        default=None,
+        help="case ID to skip in this run (repeatable); use for a known-bad case being "
+        "investigated separately rather than blocking the rest of the batch",
+    )
+    run.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="existing artifact directory from an interrupted baseline run; skip "
+        "already-completed case/repeat/variant runs instead of re-executing them",
+    )
     args = parser.parse_args()
     root = args.root.resolve()
     output = None
@@ -215,7 +291,13 @@ def main():
             raise ValueError("temperature must be between zero and two")
         args.poker_repo = args.poker_repo.resolve()
         args.tef_repo = args.tef_repo.resolve()
-        output = create_artifacts(root, args.command)
+        resume_dir = getattr(args, "resume", None)
+        if resume_dir is not None:
+            output = resume_dir.resolve()
+            if not (output / "manifest.json").is_file():
+                raise ValueError(f"--resume directory has no prior manifest.json: {output}")
+        else:
+            output = create_artifacts(root, args.command)
         print(f"Evidence: {output}", flush=True)
         if args.command == "preflight":
             summary = asyncio.run(preflight(root, args.poker_repo, args.tef_repo, output))

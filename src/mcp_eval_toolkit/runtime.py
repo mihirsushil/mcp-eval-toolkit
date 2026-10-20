@@ -108,8 +108,8 @@ def verify_description_only(a: list[dict], b: list[dict], target: str):
 
 
 @asynccontextmanager
-async def environment(root: Path, poker: Path, tef: Path, output: Path, scripted=False):
-    fixture = copy_database(poker / "data" / "poker.db", output / "poker.db")
+async def environment(root: Path, poker: Path, tef: Path, output: Path, scripted=False, resume=False):
+    fixture = copy_database(poker / "data" / "poker.db", output / "poker.db", allow_existing=resume)
     manifest = {
         "kind": "infrastructure-preflight",
         "engine": "mcp-tef with process-local structured-message recording",

@@ -57,17 +57,21 @@ def create_artifacts(root: Path, kind: str) -> Path:
     return path
 
 
-def copy_database(source: Path, target: Path) -> dict:
-    if not source.is_file() or target.exists():
+def copy_database(source: Path, target: Path, allow_existing: bool = False) -> dict:
+    if not source.is_file():
+        raise ValueError("fixture source must exist")
+    if target.exists() and not allow_existing:
         raise ValueError("fixture source must exist and destination must be new")
-    with sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True) as original:
-        with sqlite3.connect(target) as copy:
-            original.backup(copy)
-            hands = copy.execute("SELECT COUNT(*) FROM hands").fetchone()[0]
-            player_exists = copy.execute(
-                "SELECT COUNT(*) FROM hand_seats WHERE player_hash = ?",
-                ("376d6fd36aec498b",),
-            ).fetchone()[0]
+    if not target.exists():
+        with sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True) as original:
+            with sqlite3.connect(target) as copy:
+                original.backup(copy)
+    with sqlite3.connect(target) as copy:
+        hands = copy.execute("SELECT COUNT(*) FROM hands").fetchone()[0]
+        player_exists = copy.execute(
+            "SELECT COUNT(*) FROM hand_seats WHERE player_hash = ?",
+            ("376d6fd36aec498b",),
+        ).fetchone()[0]
     if not player_exists:
         raise ValueError("suite's public-fixture player is missing from this database")
     return {"sha256": digest(target.read_bytes()), "hands": hands, "player_seats": player_exists}

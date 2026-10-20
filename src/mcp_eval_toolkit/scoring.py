@@ -90,8 +90,12 @@ def observe(trace: dict, run_id: str, scripted: bool) -> Observation:
                 )
                 if call["tool"] == "final_result" and not call["error"]:
                     final_seen = True
-    if pending or not final_seen:
-        raise EvidenceError("trace lacks a completed structured final result")
+    # A run can terminate two ways: a completed structured final_result call (older upstream
+    # behavior), or a plain final-text response (current behavior since the agent's output_type
+    # was widened to [ToolSelectionResult, str] so no-call/clarify text is actually captured).
+    # Either is a valid, complete observation; only a dangling unanswered tool call is not.
+    if pending or not (final_seen or text):
+        raise EvidenceError("trace lacks a completed structured final result or final text")
     return Observation(calls, "\n".join(text), retries)
 
 

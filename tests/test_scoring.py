@@ -25,7 +25,7 @@ TOOLS = [
 ]
 
 
-def trace(calls=(), text="", scripted=True):
+def trace(calls=(), text="", scripted=True, include_final_result=True):
     messages = [{"kind": "request", "parts": [{"part_kind": "user-prompt", "content": "fixture"}]}]
     for index, (name, args) in enumerate(calls):
         messages += [
@@ -52,31 +52,31 @@ def trace(calls=(), text="", scripted=True):
                 ],
             },
         ]
-    messages += [
-        {
-            "kind": "response",
-            "parts": [
-                {"part_kind": "text", "content": text},
-                {
-                    "part_kind": "tool-call",
-                    "tool_name": "final_result",
-                    "args": {"confidence": "high"},
-                    "tool_call_id": "final",
-                },
-            ],
-        },
-        {
-            "kind": "request",
-            "parts": [
-                {
-                    "part_kind": "tool-return",
-                    "tool_name": "final_result",
-                    "tool_call_id": "final",
-                    "content": "Final result processed.",
-                }
-            ],
-        },
-    ]
+    final_parts = [{"part_kind": "text", "content": text}]
+    if include_final_result:
+        final_parts.append(
+            {
+                "part_kind": "tool-call",
+                "tool_name": "final_result",
+                "args": {"confidence": "high"},
+                "tool_call_id": "final",
+            }
+        )
+    messages.append({"kind": "response", "parts": final_parts})
+    if include_final_result:
+        messages.append(
+            {
+                "kind": "request",
+                "parts": [
+                    {
+                        "part_kind": "tool-return",
+                        "tool_name": "final_result",
+                        "tool_call_id": "final",
+                        "content": "Final result processed.",
+                    }
+                ],
+            }
+        )
     return {
         "version": 1,
         "kind": "scripted" if scripted else "live",
@@ -153,6 +153,36 @@ def test_clarification_needs_review_even_with_no_calls():
     assert result["review_required"] is True
     assert result["text"] == "What is your player hash?"
     assert grade("clarify_player_stats", [("compute_stats", {})])["deterministic_pass"] is False
+
+
+def test_text_only_termination_is_valid_evidence():
+    """Regression test: since the agent's output_type was widened to allow a plain string
+    (2026-10-20, so no-call/clarify responses capture real text instead of a bare confidence
+    value), the model virtually never calls final_result anymore -- a run ending in plain text
+    with no dangling tool call must still be scoreable, not treated as missing evidence."""
+    tool_call_result = grade(
+        "stats_population",
+        evidence=trace([("compute_stats", {})], text="VPIP is 26%.", include_final_result=False),
+    )
+    assert tool_call_result["status"] == "scored"
+    assert tool_call_result["deterministic_pass"] is True
+
+    no_call_result = grade(
+        "clarify_player_stats",
+        evidence=trace(text="What is your player hash?", include_final_result=False),
+    )
+    assert no_call_result["status"] == "scored"
+    assert no_call_result["deterministic_pass"] is True
+    assert no_call_result["text"] == "What is your player hash?"
+
+
+def test_no_final_result_and_no_text_is_still_incomplete():
+    """A trace that ends right after a tool-return, with no final response message at all
+    (e.g. the connection dropped before the model's last turn), must still fail closed."""
+    evidence = trace([("compute_stats", {})], include_final_result=False)
+    evidence["messages"].pop()  # drop the trailing (empty-text) final response message
+    result = grade("stats_population", evidence=evidence)
+    assert result["status"] == "error" and result["deterministic_pass"] is None
 
 
 def test_failed_run_is_not_a_model_failure_score():

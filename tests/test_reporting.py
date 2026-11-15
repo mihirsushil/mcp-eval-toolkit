@@ -128,3 +128,20 @@ def test_incomplete_review_template_is_rejected(evidence):
     write_json(path, read_json(evidence / "scored/review-template.json"))
     with pytest.raises(ValueError):
         report(evidence, path, draws=100)
+
+
+def test_blinded_packet_hides_variant_and_maps_to_exact_evidence(evidence):
+    summary = report(evidence, draws=100)
+    packet = read_json(evidence / "scored/blinded-review.json")
+    mapping = read_json(evidence / "scored/review-id-map.json")
+    assert len(packet) == 2
+    assert all(
+        set(row) == {"review_id", "request", "rubric", "response_text", "decision", "rationale"}
+        for row in packet
+    )
+    assert {mapping[row["review_id"]]["key"] for row in packet} == {
+        "clarify_player_stats:0:A",
+        "clarify_player_stats:0:B",
+    }
+    assert summary["families"]["compute_stats"]["cases"] == 1
+    assert summary["unstable_case_variants"] == []

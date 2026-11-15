@@ -108,7 +108,10 @@ def verify_description_only(a: list[dict], b: list[dict], target: str):
 
 
 @asynccontextmanager
-async def environment(root: Path, poker: Path, tef: Path, output: Path, scripted=False, resume=False):
+async def environment(
+    root: Path, poker: Path, tef: Path, output: Path, scripted=False, resume=False
+):
+    previous = json.loads((output / "manifest.json").read_text()) if resume else None
     fixture = copy_database(poker / "data" / "poker.db", output / "poker.db", allow_existing=resume)
     manifest = {
         "kind": "infrastructure-preflight",
@@ -140,7 +143,10 @@ async def environment(root: Path, poker: Path, tef: Path, output: Path, scripted
             check=True,
         )
         manifest.setdefault("environments", {})[name] = json.loads(result.stdout)
-    write_json(output / "manifest.json", manifest)
+    if previous:
+        for field in ("fixture", "sources", "suite_sha256", "experiment", "environments"):
+            if previous.get(field) != manifest[field]:
+                raise ValueError(f"resume evidence changed: {field}; start a new run")
     async with AsyncExitStack() as stack:
         urls = {}
         for variant in ("A", "B"):
@@ -181,11 +187,14 @@ async def environment(root: Path, poker: Path, tef: Path, output: Path, scripted
                     snapshots[variant] = sorted(
                         [t.model_dump(mode="json") for t in result.tools], key=lambda t: t["name"]
                     )
-                write_json(output / f"tools-{variant}.json", snapshots[variant])
             verify_description_only(snapshots["A"], snapshots["B"], manifest["experiment"]["tool"])
             manifest["tool_sha256"] = {
                 key: canonical_hash(value) for key, value in snapshots.items()
             }
+            if previous and previous.get("tool_sha256") != manifest["tool_sha256"]:
+                raise ValueError("resume tool definitions changed; start a new run")
+            for variant, snapshot in snapshots.items():
+                write_json(output / f"tools-{variant}.json", snapshot)
             manifest["server_urls"] = urls
             write_json(output / "manifest.json", manifest)
             yield client, urls, snapshots, manifest

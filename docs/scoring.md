@@ -72,8 +72,30 @@ Apply those labels and regenerate the report:
 
 Use a file outside `scored/` so regeneration cannot overwrite your labels.
 Incomplete labels, duplicates, stale hashes, and labels for unknown runs are
-rejected. No human labels have been supplied for the real demo artifacts yet.
-The test suite's labels are test fixtures only.
+rejected. Completed human rubric labels for the 12 clarification/no-call
+responses from the October 20 live baseline are committed in
+`reviews/baseline-20261020T005713.732529Z-human-reviews.json`.
+
+## Judge calibration (Cohen's kappa)
+
+Calibrating an automated rubric judge only on live traces where the model passes
+100% of cases yields degenerate chance agreement ($p_e = 1.0$, the Kappa
+paradox). `cases/poker/judge_calibration.json` pairs the 12 real live
+clarification/no-call responses (`human_decision: "pass"`) with 12 adversarial
+contrast cases covering rubric violations (substituting population stats when
+`player_hash` is missing, inventing hand action streams, misdefining VPIP,
+pretending to delete read-only records, and empty responses).
+
+Run the calibration check and generate a confusion matrix + Cohen's $\kappa$
+report:
+
+```sh
+.venv/bin/mcp-eval calibrate --output-dir artifacts/calibration
+```
+
+External LLM-as-judge verdicts (`JudgeVerdict` JSON bound by `key`,
+`trace_sha256`, and `case_sha256`) can be evaluated against the same human gold
+labels via `--judge-verdicts PATH`.
 
 ## Uncertainty and incomplete data
 

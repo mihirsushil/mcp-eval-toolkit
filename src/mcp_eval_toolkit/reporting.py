@@ -185,10 +185,55 @@ def report(directory: Path, reviews_path: Path | None = None, draws=5000, seed=0
         "paired": paired_summary(pairs, draws=draws, seed=seed) if pairs else None,
         "complete": all(row["status"] == "scored" for row in verdicts),
     }
+    summary["families"] = {}
+    for family in sorted({case.family for case in suite.cases}):
+        ids = {case.id for case in suite.cases if case.family == family}
+        family_pairs = []
+        for case_id in sorted(ids):
+            rows = [row for row in verdicts if row["case_id"] == case_id]
+            if all(row["status"] == "scored" for row in rows):
+                family_pairs.append(
+                    tuple(
+                        [row["deterministic_pass"] for row in rows if row["variant"] == variant]
+                        for variant in ("A", "B")
+                    )
+                )
+        summary["families"][family] = (
+            paired_summary(family_pairs, draws=draws, seed=seed) if family_pairs else None
+        )
+    summary["unstable_case_variants"] = [
+        {"case_id": case.id, "variant": variant}
+        for case in suite.cases
+        for variant in ("A", "B")
+        if len(
+            {
+                row["deterministic_pass"]
+                for row in verdicts
+                if row["case_id"] == case.id
+                and row["variant"] == variant
+                and row["status"] == "scored"
+            }
+        )
+        > 1
+    ]
     output = directory / "scored"
     write_json(output / "summary.json", summary)
     write_json(output / "scores.json", verdicts)
     write_json(output / "review-queue.json", queue)
+    blinded, mapping = [], {}
+    for row in queue:
+        review_id = canonical_hash({"key": row["key"], "trace": row["trace_sha256"]})[:16]
+        blinded.append(
+            {
+                "review_id": review_id,
+                **{field: row[field] for field in ("request", "rubric", "response_text")},
+                "decision": None,
+                "rationale": "",
+            }
+        )
+        mapping[review_id] = {field: row[field] for field in ("key", "trace_sha256", "case_sha256")}
+    write_json(output / "blinded-review.json", sorted(blinded, key=lambda row: row["review_id"]))
+    write_json(output / "review-id-map.json", mapping)
     write_json(
         output / "review-template.json",
         [
@@ -254,7 +299,30 @@ def report(directory: Path, reviews_path: Path | None = None, draws=5000, seed=0
             stats["limitation"],
             "",
         ]
-    lines += ["## Case changes", "", "| Case | Change | Difference |", "|---|---|---:|"]
+    lines += [
+        "## Diagnostic family breakdown",
+        "",
+        "Exploratory slices; no separate significance claim or multiplicity correction.",
+        "",
+        "| Family | Complete cases | A | B | B − A |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for family, values in summary["families"].items():
+        if values:
+            lines.append(
+                f"| {family} | {values['cases']} | {values['a_rate']:.1%} | "
+                f"{values['b_rate']:.1%} | {values['delta'] * 100:+.1f} pp |"
+            )
+    lines += [
+        "",
+        f"Case/variant groups with varying outcomes across repeats: "
+        f"{len(summary['unstable_case_variants'])}.",
+        "",
+        "## Case changes",
+        "",
+        "| Case | Change | Difference |",
+        "|---|---|---:|",
+    ]
     for row in changes:
         delta = "—" if row["delta"] is None else f"{row['delta'] * 100:+.1f} pp"
         lines.append(f"| {row['case_id']} | {row['change']} | {delta} |")

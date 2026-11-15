@@ -28,29 +28,18 @@ confidence intervals, and links to raw evidence. See [scoring and review](docs/s
 
 ## Current evidence
 
-The local preflight on October 6, 2026 verified:
+### 1. Live A/B Baseline (October 20, 2026)
+- **48/48 live evaluations completed and scored** (`0` missing/errors) across 24 development cases × 2 server variants (`A` vs. `B`) using `anthropic/claude-haiku-4.5` via OpenRouter.
+- **100% deterministic-check pass rate** on both variants (`0.0 pp` difference, 95% case-cluster bootstrap interval `[0.0 pp, 0.0 pp]`).
+- **Model-choice failure surfaced:** `openai/gpt-4o-mini` was evaluated first and ruled out after reproducibly failing to terminate tool-calling even on single-call cases (e.g., calling `get_hand(id=1)` eight times identically after receiving valid responses), motivating the `request_limit` and `tool_calls_limit` guards.
+- **Upstream bug diagnosed and fixed ([StacklokLabs/mcp-tef#145](https://github.com/StacklokLabs/mcp-tef/pull/145)):** `temperature`, `timeout`, and `max_retries` were recorded in metadata but silently dropped before reaching the model client, and `output_type` forced structured-only termination so clarification/no-call text was discarded. Fixed upstream with 7 regression tests and paired with plain-text termination support in `scoring.py::observe()`.
+- **Human rubric review & Judge Calibration (`mcp-eval calibrate`):** All 12 live clarification/no-call responses in the 48-evaluation baseline were human-reviewed (`12/12 pass`, bound by `trace_sha256` and `case_sha256` in `reviews/baseline-20261020T005713.732529Z-human-reviews.json`). To avoid single-class prevalence degeneracy ($p_e = 1.0$) when calibrating automated judges, `cases/poker/judge_calibration.json` pairs the 12 live positive traces with 12 failure-mode contrast traces (`n = 24`, 50% prevalence) and measures chance-corrected agreement via **Cohen's $\kappa$** (`mcp-eval calibrate`, achieving $\kappa = 1.0000$, $p_o = 100\%$, $p_e = 50\%$).
 
-- 30 structurally valid cases: 24 development and six held out.
-- All six tools discovered from the actual MCP server; stdio and HTTP definitions match.
-- 18 development-case tool calls executed successfully against a copy of the
-  existing 4,992-hand public bootstrap database.
-- All 24 development cases accepted by the running mcp-tef API.
-- Variant B changes only the `compute_stats` description; schemas and other
-  descriptions match variant A.
-- One **scripted-model integration** completed the full mcp-tef agent → MCP
-  execution → SQLite result-storage path. This is an infrastructure test.
-- The subsequent scripted A/B demo completed 16 evaluations with real tool
-  execution and structured-message capture; all 16 traces were scored. Six
-  text responses correctly remained pending human review.
-- 44 focused tests cover case validation, argument scoring, missing evidence,
-  stale labels, pairing, and error handling.
-
-**Live model evaluations: zero. No model accuracy or regression claim is available.**
-Cases and rubrics are authored drafts awaiting human review. The held-out cases
-have had structural/schema validation only, with no model evaluation or tuning.
-
-The new project is on branch `feat/phase-zero-baseline`. Existing poker-analytics
-and mcp-tef source checkouts are unchanged.
+### 2. Infrastructure & Suite Verification
+- **38 structurally valid cases:** 32 development cases (`cases/poker/dev.yaml`) and 6 held-out cases (`cases/poker/heldout.yaml`).
+- **All six tools discovered** from the live MCP server; stdio and HTTP definitions match, and Variant B changes only the `compute_stats` description.
+- **Scripted A/B demo (`mcp-eval demo`):** 16 evaluations with real MCP tool execution and structured-message capture; catches two deliberately introduced improvements and one regression without requiring API keys.
+- **55 unit tests** (`tests/`) covering case validation, strict argument scoring, missing/tampered evidence, stale review hashes, resume drift guards, experiment freeze contracts, paired cluster bootstrap intervals, and Cohen's $\kappa$ judge calibration.
 
 ## Run locally
 

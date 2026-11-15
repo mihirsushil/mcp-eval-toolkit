@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_suite_counts_and_all_tools():
     dev = load_suite(ROOT / "cases/poker/dev.yaml")
     heldout = load_suite(ROOT / "cases/poker/heldout.yaml")
-    assert len(dev.cases) == 24
+    assert len(dev.cases) == 32
     assert len(heldout.cases) == 6
-    assert len({c.id for c in dev.cases + heldout.cases}) == 30
+    assert len({c.id for c in dev.cases + heldout.cases}) == 38
     assert {a.tool for c in dev.cases for a in c.expected.acceptable} == {
         "query_hands",
         "get_hand",

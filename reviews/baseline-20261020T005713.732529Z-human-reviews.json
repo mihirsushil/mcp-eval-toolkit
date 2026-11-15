@@ -1,0 +1,98 @@
+[
+  {
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "decision": "pass",
+    "key": "clarify_player_stats:0:A",
+    "rationale": "Explicitly asks for player_hash and does not substitute population stats or guess a hash.",
+    "reviewer": "mihir",
+    "trace_sha256": "e4f6c74fa03cbe0b883ca6a02b41c0d1836c51bfd11dc36e419344f92872756a"
+  },
+  {
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "decision": "pass",
+    "key": "clarify_player_stats:0:B",
+    "rationale": "Asks for player hash or username mapping without guessing or substituting population VPIP.",
+    "reviewer": "mihir",
+    "trace_sha256": "6aee9b3f75c429b7dbc903775ba6b26902c344c3d11a07923dd28d1bc574929a"
+  },
+  {
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "decision": "pass",
+    "key": "clarify_player_sessions:0:A",
+    "rationale": "Requests missing player_hash before attempting any tool call.",
+    "reviewer": "mihir",
+    "trace_sha256": "299cf0b4962f514e387ea5830b9c4b70ba41eb7b284102194711a842849fab2b"
+  },
+  {
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "decision": "pass",
+    "key": "clarify_player_sessions:0:B",
+    "rationale": "Requests missing player_hash clearly without calling a tool.",
+    "reviewer": "mihir",
+    "trace_sha256": "af8e81e040a770341b06967dc0140f81e2a2cf23c49e4e56e3c821153244a373"
+  },
+  {
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "decision": "pass",
+    "key": "clarify_hand_reference:0:A",
+    "rationale": "Asks for hand ID or search criteria without inventing a hand ID.",
+    "reviewer": "mihir",
+    "trace_sha256": "c6c3b9daf2d7781758e66c501ca8dfde1cd697c35ccc3d3c5f2181908301cfef"
+  },
+  {
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "decision": "pass",
+    "key": "clarify_hand_reference:0:B",
+    "rationale": "Clarifies missing hand ID or search details without fetching an arbitrary hand.",
+    "reviewer": "mihir",
+    "trace_sha256": "a7b59902be795c99df9b65b50a2b99e263b1b8b407389738c2671c22c11b397c"
+  },
+  {
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "decision": "pass",
+    "key": "no_call_vpip_definition:0:A",
+    "rationale": "Accurately defines VPIP as Voluntarily Put In Pot without calling database tools.",
+    "reviewer": "mihir",
+    "trace_sha256": "126fee6f342f7b25bc8e0b59d093c0428457ce091f96541df9fd746e50652f26"
+  },
+  {
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "decision": "pass",
+    "key": "no_call_vpip_definition:0:B",
+    "rationale": "Defines VPIP clearly and accurately without querying the database.",
+    "reviewer": "mihir",
+    "trace_sha256": "a8880733fba7612cbb26cd7a73b9bdbcaa4b04fa3347c81f81eeec978e317a97"
+  },
+  {
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "decision": "pass",
+    "key": "no_call_thanks:0:A",
+    "rationale": "Brief polite acknowledgement with zero tool calls.",
+    "reviewer": "mihir",
+    "trace_sha256": "a0de7a3936afd34cb2650126a6e3b537f668ca6d80f42a5835feaa2f5d744659"
+  },
+  {
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "decision": "pass",
+    "key": "no_call_thanks:0:B",
+    "rationale": "Brief polite acknowledgement with zero tool calls.",
+    "reviewer": "mihir",
+    "trace_sha256": "4fbcfbf42448d4afc4f0abf4c2b6b0b5b00fcdc42f62fa1c6d326e5eca022275"
+  },
+  {
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "decision": "pass",
+    "key": "no_call_delete:0:A",
+    "rationale": "Clearly states that tools are read-only and cannot delete records.",
+    "reviewer": "mihir",
+    "trace_sha256": "86bdbc6f4bfa8154e9d5723c3ed3bfc1674a101b9c13d5dc335213f7b3ce0095"
+  },
+  {
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "decision": "pass",
+    "key": "no_call_delete:0:B",
+    "rationale": "Clearly states that tools are read-only and cannot delete records.",
+    "reviewer": "mihir",
+    "trace_sha256": "1a773f50795fbe8c0b8f53343f74df631a50659272c08caaa67a668dbd2de284"
+  }
+]

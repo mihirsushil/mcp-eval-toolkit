@@ -4,10 +4,13 @@ import argparse
 import asyncio
 import json
 import os
+import time
 from pathlib import Path
 
+from .calibration import calibrate
 from .cases import load_suite, select_suite
 from .evidence import canonical_hash, create_artifacts, write_json
+from .freeze import freeze, verify_freeze
 from .reporting import report, safe_run_id
 from .runtime import environment, preflight, validate_cases
 from .tef import SYSTEM_PROMPT, adapter_limits, create_case, execute
@@ -35,7 +38,13 @@ async def baseline(args, root: Path, output: Path):
     suite = select_suite(root, args.split, args.final_report)
     excluded = set(getattr(args, "exclude_case", None) or [])
     if excluded:
+        if args.split == "heldout":
+            raise ValueError("held-out reports must include every frozen case")
+        if excluded - {c.id for c in suite.cases}:
+            raise ValueError("unknown excluded case ID")
         suite = suite.model_copy(update={"cases": [c for c in suite.cases if c.id not in excluded]})
+        if not suite.cases:
+            raise ValueError("cannot exclude every case")
     scripted = args.command == "demo"
     if scripted:
         demo_ids = {
@@ -68,6 +77,13 @@ async def baseline(args, root: Path, output: Path):
     }
     if args.base_url:
         settings["base_url"] = args.base_url
+    if resuming:
+        if previous_manifest.get("requested_model_settings") != settings:
+            raise ValueError("resume requires identical model settings and system prompt")
+        if previous_manifest.get("evaluation_suite_sha256") != canonical_hash(suite.model_dump()):
+            raise ValueError("resume requires the identical frozen case suite")
+        if previous_manifest.get("repeats") != args.repeats:
+            raise ValueError("resume requires the original repeat count")
     async with environment(
         root, args.poker_repo, args.tef_repo, output, scripted=scripted, resume=resuming
     ) as (
@@ -89,6 +105,8 @@ async def baseline(args, root: Path, output: Path):
                 "evaluation_suite_sha256": canonical_hash(suite.model_dump()),
             }
         )
+        if args.split == "heldout":
+            manifest["freeze_sha256"] = verify_freeze(args.freeze, manifest)
         write_json(output / "suite.json", suite.model_dump())
         write_json(output / "manifest.json", manifest)
         completed = []
@@ -103,6 +121,7 @@ async def baseline(args, root: Path, output: Path):
                     result = await create_case(client, case, url)
                     created[variant, case.id] = result["id"]
                     write_json(output / "upstream-cases" / f"{variant}-{case.id}.json", result)
+            last_started = 0.0
             for repeat in range(args.repeats):
                 for index, case in enumerate(suite.cases):
                     order = ("A", "B") if (index + repeat) % 2 == 0 else ("B", "A")
@@ -116,8 +135,7 @@ async def baseline(args, root: Path, output: Path):
                                 manifest[
                                     "scripted_model_runs" if scripted else "live_model_runs"
                                 ] = sum(
-                                    item["result"]["status"] == "completed"
-                                    for item in completed
+                                    item["result"]["status"] == "completed" for item in completed
                                 )
                                 write_json(output / "manifest.json", manifest)
                                 print(
@@ -126,6 +144,15 @@ async def baseline(args, root: Path, output: Path):
                                     flush=True,
                                 )
                                 continue
+                            write_json(
+                                output
+                                / "attempt-history"
+                                / f"{safe_run_id(cached['result']['id'])}.json",
+                                cached,
+                            )
+                        interval = getattr(args, "interval", 0)
+                        await asyncio.sleep(max(0, interval - (time.monotonic() - last_started)))
+                        last_started = time.monotonic()
                         record = {
                             "case_id": case.id,
                             "variant": variant,
@@ -218,6 +245,20 @@ def main():
     offline.add_argument(
         "--reviews", type=Path, help="completed human review JSON; see scored/review-template.json"
     )
+    freezing = sub.add_parser("freeze", help="freeze a completed repeated development experiment")
+    freezing.add_argument("directory", type=Path)
+    freezing.add_argument("destination", type=Path)
+    cal = sub.add_parser(
+        "calibrate",
+        help="calibrate an automated rubric judge against human labels with Cohen's kappa",
+    )
+    cal.add_argument(
+        "--dataset",
+        type=Path,
+        default=root_default / "cases" / "poker" / "judge_calibration.json",
+    )
+    cal.add_argument("--judge-verdicts", type=Path, default=None)
+    cal.add_argument("--output-dir", type=Path, default=None)
     for command in (pre, run, demo):
         command.add_argument(
             "--poker-repo", type=Path, default=root_default.parent / "poker-analytics"
@@ -251,8 +292,15 @@ def main():
         help="max tool calls per case evaluation; dev/heldout cases expect at most one",
     )
     run.add_argument("--repeats", type=int, default=1)
+    run.add_argument(
+        "--interval",
+        type=float,
+        default=7,
+        help="minimum seconds between evaluation starts; reduces provider throttling",
+    )
     run.add_argument("--split", choices=["dev", "heldout"], default="dev")
     run.add_argument("--final-report", action="store_true")
+    run.add_argument("--freeze", type=Path, help="required frozen development contract for heldout")
     run.add_argument(
         "--exclude-case",
         action="append",
@@ -285,10 +333,24 @@ def main():
             print(json.dumps(report(args.directory.resolve(), args.reviews), indent=2))
             print(f"Report: {args.directory.resolve() / 'scored/report.md'}")
             return
+        if args.command == "freeze":
+            freeze(args.directory.resolve(), args.destination.resolve())
+            print(f"Frozen experiment: {args.destination.resolve()}")
+            return
+        if args.command == "calibrate":
+            out_dir = args.output_dir.resolve() if args.output_dir else None
+            verdicts_path = args.judge_verdicts.resolve() if args.judge_verdicts else None
+            cal_summary = calibrate(args.dataset.resolve(), out_dir, verdicts_path)
+            print(json.dumps(cal_summary, indent=2))
+            return
+        if args.command == "baseline" and args.split == "heldout" and not args.freeze:
+            raise ValueError("held-out evaluation requires --freeze and --final-report")
         if args.command in {"baseline", "demo"} and args.repeats < 1:
             raise ValueError("repeats must be at least one")
         if args.command == "baseline" and not 0 <= args.temperature <= 2:
             raise ValueError("temperature must be between zero and two")
+        if args.command == "baseline" and args.interval < 0:
+            raise ValueError("interval must be nonnegative")
         args.poker_repo = args.poker_repo.resolve()
         args.tef_repo = args.tef_repo.resolve()
         resume_dir = getattr(args, "resume", None)

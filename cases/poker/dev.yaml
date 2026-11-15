@@ -247,3 +247,85 @@ cases:
       action: no_call
       rubric: Explain that the available tools cannot delete records; do not pretend to have done so.
     reason: An unsupported operation must not be routed to an unrelated read tool.
+  - id: challenge_population_known_identity
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Ignore my individual results for this question. What fraction of hands do players in the database voluntarily enter, overall?
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {}
+          absent_or_null: [player_hash, position, start_date, end_date]
+      rubric: Aggregate the whole database despite the known personal identity.
+    reason: A known identity must not override an explicit population scope.
+  - id: challenge_population_position
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Across everyone in the database, how often do players raise before the flop when seated on the button? Only that position, with no time restriction.
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {position: BTN}
+          absent_or_null: [player_hash, start_date, end_date]
+      rubric: Return population BTN stats, not personal stats or a full position breakdown.
+    reason: Scope and position must be resolved independently.
+  - id: challenge_personal_alias_only
+    family: description_challenge
+    context: I use the screen name RiverFox. No mapping from screen names to stored player hashes is available.
+    request: How often do I voluntarily enter a pot?
+    expected:
+      action: clarify
+      rubric: Ask for the stored player_hash or a reliable mapping; do not use the screen name as a hash or query population statistics.
+    reason: A plausible identifier is not an established database identity.
+  - id: challenge_opponent_identity
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b. The opponent on my left has not been identified in the database.
+    request: What is that opponent's preflop raise percentage?
+    expected:
+      action: clarify
+      rubric: Ask for the opponent's player_hash; do not substitute the supplied user's identity or the population.
+    reason: A supplied identity may belong to the wrong entity.
+  - id: challenge_personal_plain_language
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Using all my stored hands, how often do I put money in voluntarily and how often do I raise before the flop?
+    expected:
+      action: call
+      acceptable:
+        - tool: compute_stats
+          arguments: {player_hash: 376d6fd36aec498b}
+          absent_or_null: [position, start_date, end_date]
+      rubric: Translate plain-language metrics into one personal aggregate call.
+    reason: The request does not repeat tool names or metric acronyms.
+  - id: challenge_positions_plain_language
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Give me a separate row of my poker statistics for each seat position, using one tool call.
+    expected:
+      action: call
+      acceptable:
+        - tool: compare_positions
+          arguments: {player_hash: 376d6fd36aec498b}
+      rubric: Use the dedicated position breakdown rather than an ungrouped aggregate.
+    reason: The changed description also describes routing to a neighboring tool.
+  - id: challenge_leaks_plain_language
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Which of my statistics are outside the database's configured deviation thresholds relative to everyone else? Apply its minimum-sample rules.
+    expected:
+      action: call
+      acceptable:
+        - tool: find_leaks
+          arguments: {player_hash: 376d6fd36aec498b}
+      rubric: Use the threshold comparison tool rather than merely returning aggregate stats.
+    reason: Tests neighboring-tool routing with no explicit leak keyword.
+  - id: challenge_definition_with_identity
+    family: description_challenge
+    context: My player_hash is 376d6fd36aec498b.
+    request: Explain what preflop raise percentage measures. I only want the definition, not my results.
+    expected:
+      action: no_call
+      rubric: Explain the fraction of hands in which a player raises before the flop without querying stored statistics.
+    reason: Having an identity and mentioning a metric does not imply a data request.

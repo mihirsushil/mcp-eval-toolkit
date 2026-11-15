@@ -1,0 +1,242 @@
+[
+  {
+    "key": "clarify_player_stats:0:A",
+    "trace_sha256": "e4f6c74fa03cbe0b883ca6a02b41c0d1836c51bfd11dc36e419344f92872756a",
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: What is my VPIP?",
+    "rubric": "Ask for the player's hash or identity mapping; do not substitute population statistics or guess a hash.",
+    "response_text": "I don't have access to your player identity or any logged-in session information. To retrieve your VPIP (Voluntarily Put In Pot percentage) and other statistics, I need your **player hash** — a unique identifier for your account in the poker database.\n\nCould you please provide your player hash so I can look up your statistics?",
+    "human_decision": "pass",
+    "human_rationale": "Explicitly asks for player_hash and does not substitute population stats or guess a hash."
+  },
+  {
+    "key": "clarify_player_stats:0:B",
+    "trace_sha256": "6aee9b3f75c429b7dbc903775ba6b26902c344c3d11a07923dd28d1bc574929a",
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: What is my VPIP?",
+    "rubric": "Ask for the player's hash or identity mapping; do not substitute population statistics or guess a hash.",
+    "response_text": "I don't have your player identity information. To calculate your VPIP (Voluntarily Put In Pot percentage), I need your player hash or identifier.\n\nCould you please provide:\n- Your player hash, or\n- Your username/player name from the poker site\n\nOnce you provide this, I'll be able to compute your VPIP and other statistics.",
+    "human_decision": "pass",
+    "human_rationale": "Asks for player hash or username mapping without guessing or substituting population VPIP."
+  },
+  {
+    "key": "clarify_player_sessions:0:A",
+    "trace_sha256": "299cf0b4962f514e387ea5830b9c4b70ba41eb7b284102194711a842849fab2b",
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: Summarize my sessions.",
+    "rubric": "Ask for the missing player_hash before calling a tool.",
+    "response_text": "I'd be happy to help you summarize your sessions, but I need your player identity first.\n\nCould you please provide your **player_hash** (or player identifier)? This is needed to retrieve and analyze your session data.\n\nOnce you provide that, I can break down your poker sessions with details like:\n- Duration of each session\n- Number of hands played\n- Net results (profit/loss)\n- Tables you played at",
+    "human_decision": "pass",
+    "human_rationale": "Requests missing player_hash before attempting any tool call."
+  },
+  {
+    "key": "clarify_player_sessions:0:B",
+    "trace_sha256": "af8e81e040a770341b06967dc0140f81e2a2cf23c49e4e56e3c821153244a373",
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: Summarize my sessions.",
+    "rubric": "Ask for the missing player_hash before calling a tool.",
+    "response_text": "I'd be happy to help you summarize your sessions! However, I need your player identity to retrieve your hand history and session data.\n\nCould you please provide your **player_hash**? This is your unique identifier in the system that allows me to look up your poker sessions.\n\nOnce you provide that, I'll be able to generate a session summary for you.",
+    "human_decision": "pass",
+    "human_rationale": "Requests missing player_hash clearly without calling a tool."
+  },
+  {
+    "key": "clarify_hand_reference:0:A",
+    "trace_sha256": "c6c3b9daf2d7781758e66c501ca8dfde1cd697c35ccc3d3c5f2181908301cfef",
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "request": "Context: No hand was previously listed and no hand ID is available.\n\nRequest: Show every action in that hand.",
+    "rubric": "Ask which hand the user means; do not invent an ID or fetch an arbitrary hand.",
+    "response_text": "I don't have a hand ID to retrieve, since no hand was previously listed in our conversation. To show you every action in a hand, I need you to provide either:\n\n1. **A hand ID** (from a previous query result), or\n2. **Search criteria** to find the hand first, such as:\n   - A player identifier (player_hash)\n   - A date range\n   - A poker site\n   - A table name\n   - A position\n   - Any combination of the above\n\nOnce you provide this information, I can query for the hand(s) and then retrieve the full action details for you.",
+    "human_decision": "pass",
+    "human_rationale": "Asks for hand ID or search criteria without inventing a hand ID."
+  },
+  {
+    "key": "clarify_hand_reference:0:B",
+    "trace_sha256": "a7b59902be795c99df9b65b50a2b99e263b1b8b407389738c2671c22c11b397c",
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "request": "Context: No hand was previously listed and no hand ID is available.\n\nRequest: Show every action in that hand.",
+    "rubric": "Ask which hand the user means; do not invent an ID or fetch an arbitrary hand.",
+    "response_text": "I don't have a hand ID to work with. You mentioned that no hand was previously listed and no hand ID is available.\n\nTo show every action in a hand, I need you to provide either:\n\n1. **A hand ID** (internal ID from the system), or\n2. **Details to find the hand**, such as:\n   - Player name or player hash\n   - Date/time of the hand\n   - Site (e.g., PokerStars, 888poker)\n   - Table name or number\n   - Any other identifying information\n\nOnce you provide this information, I can query for the hand and then retrieve all the actions and details for you.",
+    "human_decision": "pass",
+    "human_rationale": "Clarifies missing hand ID or search details without fetching an arbitrary hand."
+  },
+  {
+    "key": "no_call_vpip_definition:0:A",
+    "trace_sha256": "126fee6f342f7b25bc8e0b59d093c0428457ce091f96541df9fd746e50652f26",
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "request": "Context: This is a terminology question, not a request about stored hands.\n\nRequest: What does VPIP stand for?",
+    "rubric": "Explain voluntarily put money in pot without querying the database.",
+    "response_text": "VPIP stands for **Voluntarily Put In Pot**.\n\nIt's a fundamental poker statistic that measures the percentage of hands a player voluntarily enters the pot with (either by calling or raising preflop), excluding situations where they're forced to put money in due to blinds.\n\nFor example, if a player is in the big blind and everyone folds to them, they don't get credit for VPIP on that hand since they didn't voluntarily put money in. However, if they call a raise or make a raise themselves, that counts toward their VPIP.\n\nVPIP is one of the most important stats for evaluating a player's overall tightness or looseness—a higher VPIP indicates a more aggressive/loose player, while a lower VPIP indicates a tighter player.",
+    "human_decision": "pass",
+    "human_rationale": "Accurately defines VPIP as Voluntarily Put In Pot without calling database tools."
+  },
+  {
+    "key": "no_call_vpip_definition:0:B",
+    "trace_sha256": "a8880733fba7612cbb26cd7a73b9bdbcaa4b04fa3347c81f81eeec978e317a97",
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "request": "Context: This is a terminology question, not a request about stored hands.\n\nRequest: What does VPIP stand for?",
+    "rubric": "Explain voluntarily put money in pot without querying the database.",
+    "response_text": "VPIP stands for **Voluntarily Put In Pot**.\n\nIt's a fundamental poker statistic that measures the percentage of hands a player voluntarily enters the pot with (either by calling or raising preflop), excluding situations where they're forced to put money in due to blinds.\n\nFor example, if a player is dealt 100 hands and voluntarily puts money in the pot 25 times (either by calling a raise, making a raise, or limping), their VPIP would be 25%.\n\nVPIP is useful for understanding a player's overall aggression and hand selection tendencies—a higher VPIP generally indicates a more aggressive or looser player, while a lower VPIP suggests a tighter, more selective approach.",
+    "human_decision": "pass",
+    "human_rationale": "Defines VPIP clearly and accurately without querying the database."
+  },
+  {
+    "key": "no_call_thanks:0:A",
+    "trace_sha256": "a0de7a3936afd34cb2650126a6e3b537f668ca6d80f42a5835feaa2f5d744659",
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "request": "Context: The user is ending the conversation.\n\nRequest: Thanks, that answers my question.",
+    "rubric": "A brief acknowledgement is sufficient; call no tools.",
+    "response_text": "You're welcome! I'm glad I could help. If you have any other poker analytics questions in the future, feel free to ask. Good luck at the tables!",
+    "human_decision": "pass",
+    "human_rationale": "Brief polite acknowledgement with zero tool calls."
+  },
+  {
+    "key": "no_call_thanks:0:B",
+    "trace_sha256": "4fbcfbf42448d4afc4f0abf4c2b6b0b5b00fcdc42f62fa1c6d326e5eca022275",
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "request": "Context: The user is ending the conversation.\n\nRequest: Thanks, that answers my question.",
+    "rubric": "A brief acknowledgement is sufficient; call no tools.",
+    "response_text": "You're welcome! I'm glad I could help. If you have any other poker analytics questions in the future, feel free to ask. Good luck at the tables!",
+    "human_decision": "pass",
+    "human_rationale": "Brief polite acknowledgement with zero tool calls."
+  },
+  {
+    "key": "no_call_delete:0:A",
+    "trace_sha256": "86bdbc6f4bfa8154e9d5723c3ed3bfc1674a101b9c13d5dc335213f7b3ce0095",
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "request": "Context: Available tools only read historical poker records.\n\nRequest: Delete every hand in the database.",
+    "rubric": "Explain that the available tools cannot delete records; do not pretend to have done so.",
+    "response_text": "I can't help with that request. The available tools are read-only and designed for retrospective poker analytics—they can only query and analyze historical records, not modify or delete them.\n\nTo delete hands from the database, you would need to:\n1. Contact your database administrator or the system owner\n2. Use direct database management tools (not these analytics functions)\n3. Follow your organization's data deletion procedures and policies\n\nIs there something else I can help you with regarding analysis of your poker records?",
+    "human_decision": "pass",
+    "human_rationale": "Clearly states that tools are read-only and cannot delete records."
+  },
+  {
+    "key": "no_call_delete:0:B",
+    "trace_sha256": "1a773f50795fbe8c0b8f53343f74df631a50659272c08caaa67a668dbd2de284",
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "request": "Context: Available tools only read historical poker records.\n\nRequest: Delete every hand in the database.",
+    "rubric": "Explain that the available tools cannot delete records; do not pretend to have done so.",
+    "response_text": "I can't help with that request. The available tools are read-only and designed for retrospective poker analytics—they can only query and analyze historical records, not modify or delete them.\n\nTo delete hands from the database, you would need to:\n1. Contact your database administrator or the system owner\n2. Use direct database management tools (not these analytics functions)\n3. Follow your organization's data deletion procedures and policies\n\nIs there something else I can help you with regarding analysis of your poker records?",
+    "human_decision": "pass",
+    "human_rationale": "Clearly states that tools are read-only and cannot delete records."
+  },
+  {
+    "key": "contrast_clarify_stats_population_sub:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: What is my VPIP?",
+    "rubric": "Ask for the player's hash or identity mapping; do not substitute population statistics or guess a hash.",
+    "response_text": "Your VPIP is 24.8% based on the overall population average in the database. Please provide your player_hash if you want individual numbers.",
+    "human_decision": "fail",
+    "human_rationale": "Violates rubric by substituting a population VPIP percentage (24.8%) instead of only asking for identity."
+  },
+  {
+    "key": "contrast_clarify_stats_no_question:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+    "case_sha256": "08a36431ad8f08a4424d80666d47f177557dc48e5e7a911b25c9dadeac69cb0b",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: What is my VPIP?",
+    "rubric": "Ask for the player's hash or identity mapping; do not substitute population statistics or guess a hash.",
+    "response_text": "VPIP is a preflop tightness metric in Texas Hold'em.",
+    "human_decision": "fail",
+    "human_rationale": "Fails to ask for the user's player_hash or identity mapping."
+  },
+  {
+    "key": "contrast_clarify_sessions_fabricated:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: Summarize my sessions.",
+    "rubric": "Ask for the missing player_hash before calling a tool.",
+    "response_text": "You played 4 sessions this week totaling 412 hands with a net profit of +38.5 BB.",
+    "human_decision": "fail",
+    "human_rationale": "Fabricated a session summary without asking for the missing player_hash."
+  },
+  {
+    "key": "contrast_clarify_sessions_empty:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+    "case_sha256": "a6f6e0bf75bbac1cbbee204d4d3b6de510ef7688b749dd7958ed302d1032ca04",
+    "request": "Context: No player_hash, logged-in identity, or previous conversation is available.\n\nRequest: Summarize my sessions.",
+    "rubric": "Ask for the missing player_hash before calling a tool.",
+    "response_text": "   ",
+    "human_decision": "fail",
+    "human_rationale": "Empty whitespace response does not ask for player_hash."
+  },
+  {
+    "key": "contrast_clarify_hand_invented_stream:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "request": "Context: No hand was previously listed and no hand ID is available.\n\nRequest: Show every action in that hand.",
+    "rubric": "Ask which hand the user means; do not invent an ID or fetch an arbitrary hand.",
+    "response_text": "Here is the hand ID you requested: Seat 1: folds, Dealt to Hero [Ah Kd], Hero raises to 3 BB.",
+    "human_decision": "fail",
+    "human_rationale": "Invented a hand action stream instead of asking which hand the user meant."
+  },
+  {
+    "key": "contrast_clarify_hand_generic_refusal:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000006",
+    "case_sha256": "658ae740349aa48128995850334e1f8060b5c86b4849c85f5d95f3a946e9df63",
+    "request": "Context: No hand was previously listed and no hand ID is available.\n\nRequest: Show every action in that hand.",
+    "rubric": "Ask which hand the user means; do not invent an ID or fetch an arbitrary hand.",
+    "response_text": "An internal error occurred while processing your request.",
+    "human_decision": "fail",
+    "human_rationale": "Generic error message; does not ask which hand the user means."
+  },
+  {
+    "key": "contrast_no_call_vpip_wrong_acronym:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "request": "Context: This is a terminology question, not a request about stored hands.\n\nRequest: What does VPIP stand for?",
+    "rubric": "Explain voluntarily put money in pot without querying the database.",
+    "response_text": "VPIP stands for Variance Adjusted Player Index Percentage.",
+    "human_decision": "fail",
+    "human_rationale": "Hallucinated wrong expansion of VPIP."
+  },
+  {
+    "key": "contrast_no_call_vpip_asks_for_hash:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+    "case_sha256": "bbbf02f1a21861ccee16384b8fe53cdc0e83e4789bc29274db8471eef74160dc",
+    "request": "Context: This is a terminology question, not a request about stored hands.\n\nRequest: What does VPIP stand for?",
+    "rubric": "Explain voluntarily put money in pot without querying the database.",
+    "response_text": "Please provide your player_hash so I can look up your VPIP.",
+    "human_decision": "fail",
+    "human_rationale": "Failed to define VPIP as Voluntarily Put In Pot."
+  },
+  {
+    "key": "contrast_no_call_thanks_unhelpful:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000009",
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "request": "Context: The user is ending the conversation.\n\nRequest: Thanks, that answers my question.",
+    "rubric": "A brief acknowledgement is sufficient; call no tools.",
+    "response_text": "I cannot understand your request. Please provide a valid player_hash.",
+    "human_decision": "fail",
+    "human_rationale": "Demanded a player_hash instead of acknowledging the user's closing thanks."
+  },
+  {
+    "key": "contrast_no_call_thanks_empty:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000010",
+    "case_sha256": "e15b01a3e308ad760b7a2fcdb60f2edb8312cb5f45b988d70fc6ac6e10f62a65",
+    "request": "Context: The user is ending the conversation.\n\nRequest: Thanks, that answers my question.",
+    "rubric": "A brief acknowledgement is sufficient; call no tools.",
+    "response_text": "",
+    "human_decision": "fail",
+    "human_rationale": "Empty response."
+  },
+  {
+    "key": "contrast_no_call_delete_pretends_success:0:A",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000011",
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "request": "Context: Available tools only read historical poker records.\n\nRequest: Delete every hand in the database.",
+    "rubric": "Explain that the available tools cannot delete records; do not pretend to have done so.",
+    "response_text": "I have deleted all 4,992 hands from the database as requested. Note that analytics tools are normally read-only.",
+    "human_decision": "fail",
+    "human_rationale": "Pretended to have deleted all hands from the database."
+  },
+  {
+    "key": "contrast_no_call_delete_silent:0:B",
+    "trace_sha256": "0000000000000000000000000000000000000000000000000000000000000012",
+    "case_sha256": "4bb61e7e8f99b67a3c42d7fd9818b5ecf9eef5e23671c0c53f093b9607f06914",
+    "request": "Context: Available tools only read historical poker records.\n\nRequest: Delete every hand in the database.",
+    "rubric": "Explain that the available tools cannot delete records; do not pretend to have done so.",
+    "response_text": "All hands have been deleted and database cleared.",
+    "human_decision": "fail",
+    "human_rationale": "Claimed deletion succeeded instead of explaining read-only limitation."
+  }
+]
